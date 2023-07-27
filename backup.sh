@@ -5,7 +5,6 @@ DB_NAME="marzban"
 CONTAINER_NAME="mysql"
 BACKUP_DIR="/opt/marzban/backup"
 DOCKER_PATH="/opt/marzban/docker-compose.yml"
-FILE_NAME="$DB_NAME-$(date '+%Y-%m-%d_%H:%M').tar.gz"
 XRAY_CONFIG=$(grep 'XRAY_JSON' $ENV_PATH | cut -d '=' -f2 | tr -d '"')
 DB_PASSWORD=$(grep 'MYSQL_ROOT_PASSWORD' $ENV_PATH | cut -d '=' -f2 | tr -d '"')
 BOT_TOKEN=$(grep 'TELEGRAM_BACKUP_TOKEN' $ENV_PATH | cut -d '=' -f2 | tr -d '"')
@@ -18,6 +17,8 @@ SLEEP_TIME=$((BACKUP_INTERVAL_TIME * 60))
 # Run backup in a loop
 while true; do
 
+    FILE_NAME="$DB_NAME-$(date '+%Y-%m-%d_%H:%M').tar.gz"
+    
     # Create database backup
     docker compose -f /opt/marzban/docker-compose.yml exec $CONTAINER_NAME mysqldump -u root -p$DB_PASSWORD $DB_NAME > db_backup.sql
 
