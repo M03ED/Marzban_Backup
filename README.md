@@ -28,7 +28,7 @@ DOCKER_PATH="/opt/marzban/docker-compose.yml"
 Set These Variables In .env File Like This.
 ```env
 TELEGRAM_BACKUP_TOKEN = "11111111111:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-CHAT_ID = "11111111111"
+TELEGRAM_ADMIN_ID = "11111111111"
 BACKUP_INTERVAL_TIME =120 #backup time per minutes
 ```
 You Should Add Execute Permissions To The Script.
