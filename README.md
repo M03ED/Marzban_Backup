@@ -1,5 +1,7 @@
 # Marzban_Backup
-You Can Use This Script To Make Backup From `.env` , `xray_config.json` , `docker-compose.yml` And MySQL Database On Telegram.
+You Can Use This Script To Make Backup From `.env` , `xray_config.json` , `docker-compose.yml` , `certificates` , `templates` And Database On Telegram.
+- Both MySQL and SQlite3 Are Supported.
+
 ## Usage
 First You Need To Install `tar` , `wget` And `curl`.
 ```bash
