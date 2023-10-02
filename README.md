@@ -24,6 +24,8 @@ DB_NAME="marzban"
 CONTAINER_NAME="mysql"
 BACKUP_DIR="/opt/marzban/backup"
 DOCKER_PATH="/opt/marzban/docker-compose.yml"
+CERTS="/var/lib/marzban/certs"
+TEMPLATES="/var/lib/marzban/templates"
 ```
 Set These Variables In .env File Like This.
 ```env
