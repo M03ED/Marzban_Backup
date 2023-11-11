@@ -82,7 +82,7 @@ nohup /opt/marzban/backup.sh &
 ```
 ### Discord
 ```bash
-nohup /opt/marzban/backup.sh &
+nohup /opt/marzban/backup.py &
 ```
 - Now You Have Your Backup On Telegram.
 - New File With `nohup.out` Gonna Be Created in `/opt/marzban` And It Will Record Your Script Log , You Can Delete It When Ever You Want.
