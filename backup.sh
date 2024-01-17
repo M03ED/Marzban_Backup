@@ -62,7 +62,10 @@ backup_mysql() {
     FILE_NAME="$DB_NAME-$(date '+%Y-%m-%d_%H:%M').sql.gz"
 
     # Create MySQL database backup
-    docker compose -f "$DOCKER_PATH" exec "$CONTAINER_NAME" mysqldump -u root -p"$DB_PASSWORD" "$DB_NAME" > "$BACKUP_DIR/$FILE_NAME"
+    docker compose -f "$DOCKER_PATH" exec "$CONTAINER_NAME" mysqldump -u root -p"$DB_PASSWORD" "$DB_NAME" > db_bac>
+
+    # Create tar archive with all backup files, including the directories
+    tar czvf "$BACKUP_DIR/$FILE_NAME" db_backup.sql "$ENV_PATH" "$DOCKER_PATH" "$CERTS" "$TEMPLATES"
 
     # Send backup to Telegram bot
     send_backup_to_telegram "$BACKUP_DIR/$FILE_NAME"
