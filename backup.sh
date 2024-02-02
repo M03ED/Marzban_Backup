@@ -59,10 +59,10 @@ backup_sqlite() {
 backup_mysql() {
     log "Starting MySQL backup..."
 
-    FILE_NAME="$DB_NAME-$(date '+%Y-%m-%d_%H:%M').sql.gz"
+    FILE_NAME="$DB_NAME-$(date '+%Y-%m-%d_%H:%M').tar.gz"
 
     # Create MySQL database backup
-    docker compose -f "$DOCKER_PATH" exec "$CONTAINER_NAME" mysqldump -u root -p"$DB_PASSWORD" "$DB_NAME" > db_bac>
+    docker compose -f "$DOCKER_PATH" exec "$CONTAINER_NAME" mysqldump -u root -p"$DB_PASSWORD" "$DB_NAME" > "$BACKUP_DIR/db_backup.sql"
 
     # Create tar archive with all backup files, including the directories
     tar czvf "$BACKUP_DIR/$FILE_NAME" db_backup.sql "$ENV_PATH" "$DOCKER_PATH" "$CERTS" "$TEMPLATES"
