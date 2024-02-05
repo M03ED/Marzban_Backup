@@ -69,6 +69,7 @@ backup_mysql() {
 
     # Send backup to Telegram bot
     send_backup_to_telegram "$BACKUP_DIR/$FILE_NAME"
+    rm "$BACKUP_DIR/$FILE_NAME"
 
     log "MySQL backup completed!"
 }
