@@ -17,6 +17,7 @@ SQLALCHEMY_DATABASE_URL=$(get_env_var 'SQLALCHEMY_DATABASE_URL')
 XRAY_CONFIG=$(get_env_var 'XRAY_JSON')
 BOT_TOKEN=$(get_env_var 'TELEGRAM_BACKUP_TOKEN')
 CHAT_ID=$(get_env_var 'TELEGRAM_ADMIN_ID')
+DISCORD_BACKUP_URL=$(get_env_var 'DISCORD_BACKUP_URL')
 BACKUP_INTERVAL_TIME=$(get_env_var 'BACKUP_INTERVAL_TIME')
 
 # Calculate sleep time in seconds
@@ -29,8 +30,22 @@ log() {
 
 # Function to send a file to Telegram
 send_backup_to_telegram() {
+    echo 
+    echo "Sending Backup To Telegram"
     local file_path="$1"
     curl -F chat_id="$CHAT_ID" -F document=@"$file_path" "https://api.telegram.org/bot$BOT_TOKEN/sendDocument"
+}
+
+send_backup_to_discord() {
+    local file_path="$1"
+    local messege = "here is your back up"
+
+    echo 
+    echo 
+    echo "Sending Backup To Discord"
+    curl -X POST -H "Content-Type: multipart/form-data" -F "content=$messege" -F "file=@$file_path" $DISCORD_BACKUP_URL
+
+    echo "Backup successfully sent to Discord"
 }
 
 # Backup function for SQLite
@@ -47,6 +62,7 @@ backup_sqlite() {
 
     # Send backup to Telegram bot
     send_backup_to_telegram "$BACKUP_DIR/$FILE_NAME"
+    send_backup_to_discord "$BACKUP_DIR/$FILE_NAME"
 
     # Cleanup
     rm "$BACKUP_DIR/$DB_NAME.sqlite3"
@@ -65,10 +81,11 @@ backup_mysql() {
     docker compose -f "$DOCKER_PATH" exec "$CONTAINER_NAME" mysqldump -u root -p"$DB_PASSWORD" "$DB_NAME" > "$BACKUP_DIR/db_backup.sql"
 
     # Create tar archive with all backup files, including the directories
-    tar czvf "$BACKUP_DIR/$FILE_NAME" db_backup.sql "$ENV_PATH" "$DOCKER_PATH" "$CERTS" "$TEMPLATES"
+    tar czvf "$BACKUP_DIR/$FILE_NAME" "$BACKUP_DIR/db_backup.sql" "$ENV_PATH" "$DOCKER_PATH" "$CERTS" "$TEMPLATES"
 
     # Send backup to Telegram bot
     send_backup_to_telegram "$BACKUP_DIR/$FILE_NAME"
+    send_backup_to_discord "$BACKUP_DIR/$FILE_NAME"
     rm "$BACKUP_DIR/$FILE_NAME"
 
     log "MySQL backup completed!"
