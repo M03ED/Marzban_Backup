@@ -60,7 +60,7 @@ You Should Add Execute Permissions To The Script.
 chmod +x /opt/Marzban_Backup/backup.sh
 ```
 
-## Step 5 
+## Step 4
 Then Run The Program In `nohup` Mode To Stay Active In Background.
 ```bash
 nohup /opt/Marzban_Backup/backup.sh &
