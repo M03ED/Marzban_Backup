@@ -4,9 +4,9 @@ You Can Use This Script To Make Backup From `.env` , `xray_config.json` , `docke
 
 # Usage
 ## Step 1
-First You Need To Install `tar` , `wget` And `curl`.
+First You Need To Install `tar` And `curl`.
 ```bash
-apt install tar curl wget
+apt install tar curl
 ```
 Then Change The Directory.
 ```bash
