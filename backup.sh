@@ -22,7 +22,6 @@ get_env_var() {
         
         if [[ -n "$var_value" ]]; then
             DB_URL="$var_value"
-            echo "$var_value"
             return 0
         fi
         
@@ -30,6 +29,7 @@ get_env_var() {
     done
     
     echo "Error: No non-empty variable found in the environment file." >&2
+    DB_URL=""
     return 1
 }
 
@@ -166,17 +166,34 @@ parse_sqlalchemy_url() {
     database="$db"
 }
 
+parse_gorm_url() {
+    local input_string="$1"
+
+    local username=$(echo "$input_string" | cut -d ':' -f 1)
+    
+    local username=$(echo "$input_string" | sed -n 's/^\([^:]*\):.*@tcp.*/\1/p')
+    local pass=$(echo "$input_string" | sed -n 's/^[^:]*:\([^@]*\)@tcp.*/\1/p')
+    local db=$(echo "$input_string" | sed -n 's/.*\/\([^?]*\).*/\1/p' | cut -d '?' -f 1)
+    db=$(echo "$db" | cut -d '?' -f 1)
+    
+    user="$username"
+    password="$pass"
+    database="$db"
+}
+
 
 process_database() {
     local index=$1
 
-    DB_NAME=$(get_config ".databases[$index].db_name")
-    DB_TYPE=$(get_config ".databases[$index].type")
-    ENV_PATH=$(get_config ".databases[$index].env_path")
-    CONTAINER_NAME=$(get_config ".databases[$index].container_name")
-    DOCKER_PATH=$(get_config ".databases[$index].docker_path")
+    local DB_NAME=$(get_config ".databases[$index].db_name")
+    local DB_TYPE=$(get_config ".databases[$index].type")
+    local ENV_PATH=$(get_config ".databases[$index].env_path")
+    local CONTAINER_NAME=$(get_config ".databases[$index].container_name")
+    local DOCKER_PATH=$(get_config ".databases[$index].docker_path")
+    local URL_FORMAT=$(get_config ".databases[$index].url_format")
+
     get_env_var $ENV_PATH "DATABASE_URL" "SQLALCHEMY_DATABASE_URL"
-    EXTERNAL_PATHS=$(jq -r ".databases[$index].external | join(\" \")" "$CONFIG_FILE")
+    local EXTERNAL_PATHS=$(jq -r ".databases[$index].external | join(\" \")" "$CONFIG_FILE")
 
     if [[ $DB_TYPE == "sqlite" ]]; then
         DB_URL="${DB_URL#sqlite:///}"
@@ -187,7 +204,17 @@ process_database() {
     if [[ $DB_TYPE == "sqlite" ]]; then
         DB_URL="${DB_URL#sqlite:///}"
     else
-        parse_sqlalchemy_url "$DB_URL"
+        case $URL_FORMAT in
+            "sqlalchemy")
+                parse_sqlalchemy_url "$DB_URL"
+                ;;
+            "gorm")
+                parse_gorm_url "$DB_URL"
+                ;;
+            *)
+                log "Unsupported database type: $DB_TYPE"
+                ;;
+        esac
     fi
     
     if [[ -z "$DB_NAME" ]]; then

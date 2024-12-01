@@ -1,6 +1,6 @@
-# Marzban_Backup
-You Can Use This Script To Make Backup From `.env` , `xray_config.json` , `docker-compose.yml` , `certificates` , `templates` And `Database` On Telegram And Discord.
-- Both MySQL and SQlite3 Are Supported.
+# M03ED Backup
+You Can Use This Script To Make Backup From `gorm` or `sqlalchemy` Database On Telegram And Discord.
+- MySQL, MariaDB and SQlite3 Are Supported.
 
 # Usage
 ## Step 1
@@ -14,11 +14,11 @@ cd /opt
 ```
 Download Project.
 ```bash 
-git clone "https://github.com/M03ED/Marzban_Backup.git"
+git clone "https://github.com/M03ED/M03ED_Backup.git"
 ```
 Enter Project Folder
 ```bash
-cd /opt/Marzban_Backup
+cd /opt/M03ED_Backup
 ```
 Make A Folder For Temporary Files (You can change this path from config.json).
 ```bash
@@ -29,7 +29,7 @@ mkdir temp
 Set-up Your Config file.
 ```json
 {
-    "backup_dir": "/opt/Marzban_Backup/temp",
+    "backup_dir": "/opt/M03ED_Backup/temp",
     "backup_interval_time": 60, // interval per minutes
     "telegram": {
         "bot_token": "your-telegram-bot-token", // replace with telegram bot token, max to 50mb backup
@@ -44,6 +44,7 @@ Set-up Your Config file.
             "env_path": "/opt/marzban/.env",
             "docker_path": "/opt/marzban/docker-compose.yml",
             "container_name": "mariadb", // database container name
+            "url_format":"sqlalchemy", // can be sqlalchemy or gorm, use sqlalchemy for marzban
             "external": [
                 "/var/lib/marzban/certs",
                 "/var/lib/marzban/templates",
@@ -57,14 +58,14 @@ Set-up Your Config file.
 ## Step 3
 You Should Add Execute Permissions To The Script.
 ```bash
-chmod +x /opt/Marzban_Backup/backup.sh
+chmod +x /opt/M03ED_Backup/backup.sh
 ```
 
 ## Step 4
 Then Run The Program In `nohup` Mode To Stay Active In Background.
 ```bash
-nohup /opt/Marzban_Backup/backup.sh &
+nohup /opt/M03ED_Backup/backup.sh &
 ```
 
 - Now You Have Your Backup On Telegram And Discord.
-- New File With `nohup.out` Name Gonna Be Created in `/opt/marzban` And It Will Record Your Script Log , You Can Delete It When Ever You Want.
+- New File With `nohup.out` Name Gonna Be Created in `/opt/M03ED_Backup` And It Will Record Your Script Log , You Can Delete It When Ever You Want.

@@ -14,6 +14,7 @@
             "env_path": "/opt/marzban/.env",
             "docker_path": "/opt/marzban/docker-compose.yml",
             "container_name": "mariadb",
+            "url_format":"sqlalchemy",
             "external": [
                 "/var/lib/marzban/certs",
                 "/var/lib/marzban/templates",
@@ -37,6 +38,7 @@
             "env_path": "/opt/marzban/.env",
             "docker_path": "/opt/marzban/docker-compose.yml",
             "container_name": "mysql",
+            "url_format":"gorm",
             "external": [
                 "/var/lib/marzban/certs",
                 "/var/lib/marzban/templates",
