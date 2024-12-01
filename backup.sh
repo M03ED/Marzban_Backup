@@ -1,104 +1,235 @@
 #!/bin/bash
 
-ENV_PATH="/opt/marzban/.env"
-DB_NAME="marzban"
-CONTAINER_NAME="mysql"
-BACKUP_DIR="/opt/marzban/backup"
-DOCKER_PATH="/opt/marzban/docker-compose.yml"
-CERTS="/var/lib/marzban/certs"
-TEMPLATES="/var/lib/marzban/templates"
+CONFIG_FILE="config.json"
 
-# Extract environment variables
-get_env_var() {
-    grep "$1" "$ENV_PATH" | cut -d '=' -f2 | tr -d '"'
+get_config() {
+    jq -r "$1 // \"\"" "$CONFIG_FILE"
 }
 
-SQLALCHEMY_DATABASE_URL=$(get_env_var 'SQLALCHEMY_DATABASE_URL')
-XRAY_CONFIG=$(get_env_var 'XRAY_JSON')
-BOT_TOKEN=$(get_env_var 'TELEGRAM_BACKUP_TOKEN')
-CHAT_ID=$(get_env_var 'TELEGRAM_ADMIN_ID')
-DISCORD_BACKUP_URL=$(get_env_var 'DISCORD_BACKUP_URL')
-BACKUP_INTERVAL_TIME=$(get_env_var 'BACKUP_INTERVAL_TIME')
+get_env_var() {
+    local env_file="$1"
+    shift
+    
+    if [[ ! -f "$env_file" ]]; then
+        echo "Error: Environment file '$env_file' not found." >&2
+        return 1
+    fi
 
-# Calculate sleep time in seconds
+    while [[ $# -gt 0 ]]; do
+        local var_name="$1"
+        
+        local var_value=$(grep -E "^$var_name\s*=" "$env_file" | sed -E 's/^[^=]*=\s*//; s/^"//; s/"$//; s/^'"'"'//; s/'"'"'$//')
+        
+        if [[ -n "$var_value" ]]; then
+            DB_URL="$var_value"
+            echo "$var_value"
+            return 0
+        fi
+        
+        shift 
+    done
+    
+    echo "Error: No non-empty variable found in the environment file." >&2
+    return 1
+}
+
+# Global configurations
+BACKUP_DIR=$(get_config '.backup_dir')
+BACKUP_INTERVAL_TIME=$(get_config '.backup_interval_time')
+BOT_TOKEN=$(get_config '.telegram.bot_token')
+CHAT_ID=$(get_config '.telegram.chat_id')
+DISCORD_BACKUP_URL=$(get_config '.discord.backup_url')
+
 SLEEP_TIME=$((BACKUP_INTERVAL_TIME * 60))
 
-# Log function for better visibility
 log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] - $1"
 }
 
-# Function to send a file to Telegram
 send_backup_to_telegram() {
-    echo 
-    echo "Sending Backup To Telegram"
     local file_path="$1"
     curl -F chat_id="$CHAT_ID" -F document=@"$file_path" "https://api.telegram.org/bot$BOT_TOKEN/sendDocument"
 }
 
 send_backup_to_discord() {
     local file_path="$1"
-    local messege = "here is your back up"
+    local message="Here is your backup"
 
-    echo 
-    echo 
+    echo
     echo "Sending Backup To Discord"
     curl -X POST -H "Content-Type: multipart/form-data" -F "content=$messege" -F "file=@$file_path" $DISCORD_BACKUP_URL
-
-    echo "Backup successfully sent to Discord"
 }
 
-# Backup function for SQLite
 backup_sqlite() {
-    log "Starting SQLite backup..."
+    local backup_name=$1
+    local db_path=$2
+    shift
 
-    FILE_NAME="$DB_NAME-$(date '+%Y-%m-%d_%H:%M').tar.gz"
+    local additional_files=("$@")
 
-    # Backup SQLite database file
-    cp "$SQLALCHEMY_DATABASE_URL" "$BACKUP_DIR/$DB_NAME.sqlite3"
+    log "Starting SQLite backup for $backup_name..."
 
-    # Create a tar archive with all backup files, including the directories
-    tar czvf "$BACKUP_DIR/$FILE_NAME" "$BACKUP_DIR/$DB_NAME.sqlite3" "$ENV_PATH" "$DOCKER_PATH" "$CERTS" "$TEMPLATES"
+    FILE_NAME="$backup_name-$(date '+%Y-%m-%d_%H:%M').tar.gz"
 
-    # Send backup to Telegram bot
+    cp "$db_path" "$BACKUP_DIR/$backup_name.sqlite3"
+    tar czvf "$BACKUP_DIR/$FILE_NAME" "$BACKUP_DIR/$backup_name.sqlite3" "${additional_files[@]}"
+
     send_backup_to_telegram "$BACKUP_DIR/$FILE_NAME"
     send_backup_to_discord "$BACKUP_DIR/$FILE_NAME"
 
-    # Cleanup
-    rm "$BACKUP_DIR/$DB_NAME.sqlite3"
+    rm "$BACKUP_DIR/$backup_name.sqlite3"
     rm "$BACKUP_DIR/$FILE_NAME"
 
-    log "SQLite backup completed!"
+    log "SQLite backup for $db_name completed!"
 }
 
-# Backup function for MySQL
 backup_mysql() {
-    log "Starting MySQL backup..."
-
-    FILE_NAME="$DB_NAME-$(date '+%Y-%m-%d_%H:%M').tar.gz"
-
-    # Create MySQL database backup
-    docker compose -f "$DOCKER_PATH" exec "$CONTAINER_NAME" mysqldump -u root -p"$DB_PASSWORD" "$DB_NAME" > "$BACKUP_DIR/db_backup.sql"
-
-    # Create tar archive with all backup files, including the directories
-    tar czvf "$BACKUP_DIR/$FILE_NAME" "$BACKUP_DIR/db_backup.sql" "$ENV_PATH" "$DOCKER_PATH" "$CERTS" "$TEMPLATES"
-
-    # Send backup to Telegram bot
+    local db_name=$1
+    local backup_name=$2
+    local container_name=$3
+    local docker_path=$4
+    local user=$5
+    local password=$6
+    shift
+    local additional_files=("$@")
+    
+    log "Starting MySQL backup for $db_name..."
+    FILE_NAME="$backup_name-$(date '+%Y-%m-%d_%H:%M').tar.gz"
+    
+    if ! output=$(docker compose -f "$docker_path" exec "$container_name" mysqldump -u root -p"$password" "$db_name" 2>&1 > "$BACKUP_DIR/db_backup.sql"); then
+        if [[ "$output" == *"Enter password:"* || "$output" == *"Access denied"* ]]; then
+            log "Error: Authentication failed for MySQL backup. Please check credentials."
+            return 1
+        else
+            log "Error during MySQL backup: $output"
+            return 1
+        fi
+    fi
+    
+    tar czvf "$BACKUP_DIR/$FILE_NAME" "$BACKUP_DIR/db_backup.sql" "$docker_path" "${additional_files[@]}"
     send_backup_to_telegram "$BACKUP_DIR/$FILE_NAME"
     send_backup_to_discord "$BACKUP_DIR/$FILE_NAME"
+    
+    rm "$BACKUP_DIR/db_backup.sql"
     rm "$BACKUP_DIR/$FILE_NAME"
+    
+    log "MySQL backup for $db_name completed!"
+    return 0
+}
 
-    log "MySQL backup completed!"
+backup_mariadb() {
+    local db_name=$1
+    local backup_name=$2
+    local container_name=$3
+    local docker_path=$4
+    local user=$5
+    local password=$6
+    shift
+    local additional_files=("$@")
+    
+    log "Starting MariaDB backup for $db_name..."
+    FILE_NAME="$backup_name-$(date '+%Y-%m-%d_%H:%M').tar.gz"
+    
+    if ! output=$(docker compose -f "$docker_path" exec "$container_name" mariadb-dump -u"$user" -p"$password" "$db_name" 2>&1 > "$BACKUP_DIR/db_backup.sql"); then
+        if [[ "$output" == *"Enter password:"* || "$output" == *"Access denied"* ]]; then
+            log "Error: Authentication failed for MariaDB backup. Please check credentials."
+            return 1
+        else
+            log "Error during MariaDB backup: $output"
+            return 1
+        fi
+    fi
+    
+    tar czvf "$BACKUP_DIR/$FILE_NAME" "$BACKUP_DIR/db_backup.sql" "$env_path" "$docker_path" "${additional_files[@]}"
+    send_backup_to_telegram "$BACKUP_DIR/$FILE_NAME"
+    send_backup_to_discord "$BACKUP_DIR/$FILE_NAME"
+    
+    rm "$BACKUP_DIR/db_backup.sql"
+    rm "$BACKUP_DIR/$FILE_NAME"
+    
+    log "MariaDB backup for $db_name completed!"
+    return 0
+}
+
+
+parse_sqlalchemy_url() {
+    local input_string="$1"
+    
+    local credentials=$(echo "$input_string" | sed -n 's/.*mysql:\/\/\(.*\)@.*/\1/p')
+    
+    local username=$(echo "$credentials" | cut -d ':' -f 1)
+    local pass=$(echo "$credentials" | cut -d ':' -f 2)
+    local db=$(echo "$input_string" | sed -n 's/.*\/\([^/]*\)$/\1/p')
+    
+    # Output the results
+    echo "Username: $username"
+    echo "Password: $pass"
+    echo "Database: $db"
+
+    user="$username"
+    password="$pass"
+    database="$db"
+}
+
+
+process_database() {
+    local index=$1
+
+    DB_NAME=$(get_config ".databases[$index].db_name")
+    DB_TYPE=$(get_config ".databases[$index].type")
+    ENV_PATH=$(get_config ".databases[$index].env_path")
+    CONTAINER_NAME=$(get_config ".databases[$index].container_name")
+    DOCKER_PATH=$(get_config ".databases[$index].docker_path")
+    get_env_var $ENV_PATH "DATABASE_URL" "SQLALCHEMY_DATABASE_URL"
+    EXTERNAL_PATHS=$(jq -r ".databases[$index].external | join(\" \")" "$CONFIG_FILE")
+
+    if [[ $DB_TYPE == "sqlite" ]]; then
+        DB_URL="${DB_URL#sqlite:///}"
+    else
+        parse_sqlalchemy_url "$DB_URL"
+    fi
+
+    echo "DB Type: $DB_TYPE"
+    echo "ENV PATH: $ENV_PATH"
+    echo "CONTAINER NAME: $CONTAINER_NAME"
+    echo "DOCKER PATH: $DOCKER_PATH"
+    echo "DB URL: $DB_URL"
+
+    if [[ $DB_TYPE == "sqlite" ]]; then
+        DB_URL="${DB_URL#sqlite:///}"
+    else
+        parse_sqlalchemy_url "$DB_URL"
+    fi
+    
+    if [[ -z "$DB_NAME" ]]; then
+        DB_NAME="$database"
+    fi
+
+    echo "Final DB_NAME: $DB_NAME"
+
+    case $DB_TYPE in
+        "sqlite")
+            backup_sqlite "$DB_NAME" "$SQLALCHEMY_DATABASE_URL" "$ENV_PATH" "$DOCKER_PATH" $EXTERNAL_PATHS
+            ;;
+        "mysql")
+            backup_mysql "$database" "$DB_NAME" "$CONTAINER_NAME" "$DOCKER_PATH" "$user" "$password" "$ENV_PATH" $EXTERNAL_PATHS
+            ;;
+        "mariadb")
+            backup_mariadb "$database" "$DB_NAME" "$CONTAINER_NAME" "$DOCKER_PATH" "$user" "$password" "$ENV_PATH" $EXTERNAL_PATHS
+            ;;
+        *)
+            log "Unsupported database type: $DB_TYPE"
+            ;;
+    esac
 }
 
 # Main loop
 while true; do
-    if [[ $SQLALCHEMY_DATABASE_URL == sqlite* ]]; then
-        backup_sqlite
-    else
-        DB_PASSWORD=$(get_env_var 'MYSQL_ROOT_PASSWORD')
-        backup_mysql
-    fi
+    DATABASE_COUNT=$(jq '.databases | length' "$CONFIG_FILE")
+
+    for ((i = 0; i < DATABASE_COUNT; i++)); do
+        process_database "$i"
+    done
 
     log "Sleeping for $SLEEP_TIME seconds..."
     sleep "$SLEEP_TIME"

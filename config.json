@@ -1,0 +1,47 @@
+{
+    "backup_dir": "/opt/Marzban_Backup/temp",
+    "backup_interval_time": 60,
+    "telegram": {
+        "bot_token": "your-telegram-bot-token",
+        "chat_id": "your-chat-id"
+    },
+    "discord": {
+        "backup_url": "your-discord-webhook-url"
+    },
+    "databases": [
+        {
+            "type": "mariadb",
+            "env_path": "/opt/marzban/.env",
+            "docker_path": "/opt/marzban/docker-compose.yml",
+            "container_name": "mariadb",
+            "external": [
+                "/var/lib/marzban/certs",
+                "/var/lib/marzban/templates",
+                "/var/lib/marzban/xray_config.json"
+            ]
+        },
+        {
+            "type": "sqlite",
+            "db_name":"test",
+            "env_path": "/opt/marzban/.env",
+            "docker_path": "/opt/marzban/docker-compose.yml",
+            "container_name": "",
+            "external": [
+                "/var/lib/marzban/certs",
+                "/var/lib/marzban/templates",
+                "/var/lib/marzban/xray_config.json"
+            ]
+        },
+        {
+            "type": "mysql",
+            "env_path": "/opt/marzban/.env",
+            "docker_path": "/opt/marzban/docker-compose.yml",
+            "container_name": "mysql",
+            "external": [
+                "/var/lib/marzban/certs",
+                "/var/lib/marzban/templates",
+                "/var/lib/marzban/xray_config.json"
+            ]
+        }
+    ]
+}

@@ -10,48 +10,60 @@ apt install tar curl wget
 ```
 Then Change The Directory.
 ```bash
-cd /opt/marzban
+cd /opt
 ```
-Make A Folder For Temporary Files.
-```bash
-mkdir backup
-```
-- Download The Script.
+Download Project.
 ```bash 
-wget https://raw.githubusercontent.com/M03ED/Marzban_Backup/main/backup.sh
+git clone "https://github.com/M03ED/Marzban_Backup.git"
+```
+Enter Project Folder
+```bash
+cd /opt/Marzban_Backup
+```
+Make A Folder For Temporary Files (You can change this path from config.json).
+```bash
+mkdir temp
 ```
 
 ## Step 2
-Change Variables If Your File Name Or Location Is Diffrent.
-```bash
-ENV_PATH="/opt/marzban/.env"
-DB_NAME="marzban"
-CONTAINER_NAME="mysql"
-BACKUP_DIR="/opt/marzban/backup"
-DOCKER_PATH="/opt/marzban/docker-compose.yml"
-CERTS="/var/lib/marzban/certs"
-TEMPLATES="/var/lib/marzban/templates"
+Set-up Your Config file.
+```json
+{
+    "backup_dir": "/opt/Marzban_Backup/temp",
+    "backup_interval_time": 60, // interval per minutes
+    "telegram": {
+        "bot_token": "your-telegram-bot-token", // replace with telegram bot token, max to 50mb backup
+        "chat_id": "your-chat-id" // replace with your telegram id, you can find it with https://t.me/username_to_id_bot
+    },
+    "discord": {
+        "backup_url": "your-discord-webhook-url" // replace with discord webhook, max to 10mb backup
+    },
+    "databases": [
+        {
+            "type": "mariadb", //can be mysql, sqlite or mariadb
+            "env_path": "/opt/marzban/.env",
+            "docker_path": "/opt/marzban/docker-compose.yml",
+            "container_name": "mariadb", // database container name
+            "external": [
+                "/var/lib/marzban/certs",
+                "/var/lib/marzban/templates",
+                "/var/lib/marzban/xray_config.json"
+            ] // any file or folder you need to add to backup file
+        }
+    ] // list of database's, you can add many as you want
+}
 ```
 
 ## Step 3
-Set These Variables In .env File Like This.
-```env
-TELEGRAM_BACKUP_TOKEN = "11111111111:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-TELEGRAM_ADMIN_ID = "11111111111"
-BACKUP_INTERVAL_TIME =120 #backup time per minutes
-# only for discord
-DISCORD_BACKUP_URL = "https://discord.com/api/webhooks/111111111111111111111111/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-```
-
-## Step 4
 You Should Add Execute Permissions To The Script.
 ```bash
-chmod +x /opt/marzban/backup.sh
+chmod +x /opt/Marzban_Backup/backup.sh
 ```
+
 ## Step 5 
 Then Run The Program In `nohup` Mode To Stay Active In Background.
 ```bash
-nohup /opt/marzban/backup.sh &
+nohup /opt/Marzban_Backup/backup.sh &
 ```
 
 - Now You Have Your Backup On Telegram And Discord.
