@@ -160,11 +160,6 @@ parse_sqlalchemy_url() {
     local username=$(echo "$credentials" | cut -d ':' -f 1)
     local pass=$(echo "$credentials" | cut -d ':' -f 2)
     local db=$(echo "$input_string" | sed -n 's/.*\/\([^/]*\)$/\1/p')
-    
-    # Output the results
-    echo "Username: $username"
-    echo "Password: $pass"
-    echo "Database: $db"
 
     user="$username"
     password="$pass"
@@ -189,12 +184,6 @@ process_database() {
         parse_sqlalchemy_url "$DB_URL"
     fi
 
-    echo "DB Type: $DB_TYPE"
-    echo "ENV PATH: $ENV_PATH"
-    echo "CONTAINER NAME: $CONTAINER_NAME"
-    echo "DOCKER PATH: $DOCKER_PATH"
-    echo "DB URL: $DB_URL"
-
     if [[ $DB_TYPE == "sqlite" ]]; then
         DB_URL="${DB_URL#sqlite:///}"
     else
@@ -204,8 +193,6 @@ process_database() {
     if [[ -z "$DB_NAME" ]]; then
         DB_NAME="$database"
     fi
-
-    echo "Final DB_NAME: $DB_NAME"
 
     case $DB_TYPE in
         "sqlite")
